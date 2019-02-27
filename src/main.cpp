@@ -9,7 +9,7 @@
 #define NUM_OF_ROWS 8
 #define NUM_OF_COLS 8
 
-#define TERMINATOR 1
+#define TERMINATOR 8
 
 struct Fields
 {
@@ -21,7 +21,7 @@ struct Fields
 
 void initFields(Fields fields[NUM_OF_ROWS][NUM_OF_COLS])
 {
-    printf(FILE_NAME "initFields\n");
+    // printf(FILE_NAME "initFields\n");
     char slovo = 'A';
     for (uint8_t r = 0; r < NUM_OF_ROWS; r++)
     {
@@ -43,7 +43,7 @@ void initFields(Fields fields[NUM_OF_ROWS][NUM_OF_COLS])
 
 void drawFields(Fields fields[NUM_OF_ROWS][NUM_OF_COLS])
 {
-    printf(FILE_NAME "drawFields\n");
+    // printf(FILE_NAME "drawFields\n");
 
     for (uint8_t r = 0; r < NUM_OF_ROWS; r++)
     {
@@ -93,7 +93,7 @@ void readRecursive(Fields field, Fields fields[NUM_OF_ROWS][NUM_OF_COLS], uint8_
     // drawFields(fields);
     // printf("---------------------------\n");
 
-    if (terminator > TERMINATOR)
+    if (terminator >= TERMINATOR)
     {
         printf("%s\n", rijec);
         return;
