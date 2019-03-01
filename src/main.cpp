@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "colors.h"
 
@@ -9,13 +10,20 @@
 #define NUM_OF_ROWS 8
 #define NUM_OF_COLS 8
 
-#define TERMINATOR 8
+#define TERMINATOR 5
 
-struct Fields
+struct Coordinate
 {
     uint8_t row;
     uint8_t col;
-    bool used;
+};
+
+char rijec = 'ztarjnksobižitoe';
+
+struct Fields
+{
+    Coordinate coordinate;
+    bool neighbour;
     char value;
 };
 
@@ -28,13 +36,16 @@ void initFields(Fields fields[NUM_OF_ROWS][NUM_OF_COLS])
         for (uint8_t c = 0; c < NUM_OF_COLS; c++)
         {
             fields[r][c].value = slovo;
-            fields[r][c].row = r;
-            fields[r][c].col = c;
-            fields[r][c].used = false;
+            fields[r][c].coordinate.row = r;
+            fields[r][c].coordinate.col = c;
+            fields[r][c].neighbour = false;
             slovo++;
-            if (slovo > 'Z' && slovo < 'a'){
+            if (slovo > 'Z' && slovo < 'a')
+            {
                 slovo = 'a';
-            } else if (slovo > 'z'){
+            }
+            else if (slovo > 'z')
+            {
                 slovo = '0';
             }
         }
@@ -43,14 +54,14 @@ void initFields(Fields fields[NUM_OF_ROWS][NUM_OF_COLS])
 
 void drawFields(Fields fields[NUM_OF_ROWS][NUM_OF_COLS])
 {
-    // printf(FILE_NAME "drawFields\n");
+    printf(FILE_NAME "drawFields\n");
 
     for (uint8_t r = 0; r < NUM_OF_ROWS; r++)
     {
         printf("  ");
         for (uint8_t c = 0; c < NUM_OF_COLS; c++)
         {
-            if (fields[r][c].used)
+            if (fields[r][c].neighbour)
             {
                 printf(CBG_BLUE "%c" CRESET " ", fields[r][c].value);
             }
@@ -63,7 +74,7 @@ void drawFields(Fields fields[NUM_OF_ROWS][NUM_OF_COLS])
     }
 }
 
-uint8_t getNeighbours(Fields field, Fields fields[NUM_OF_ROWS][NUM_OF_COLS])
+uint8_t setNeighboursIntoFields(Coordinate coordinate, Fields fields[NUM_OF_ROWS][NUM_OF_COLS])
 {
     uint8_t len = 0;
 
@@ -72,11 +83,11 @@ uint8_t getNeighbours(Fields field, Fields fields[NUM_OF_ROWS][NUM_OF_COLS])
         for (uint8_t c = 0; c < NUM_OF_COLS; c++)
         {
             if (
-                (abs(r - field.row) == 0 && abs(c - field.col) == 1) ||
-                (abs(r - field.row) == 1 && abs(c - field.col) == 0) ||
-                (abs(r - field.row) == 1 && abs(c - field.col) == 1))
+                (abs(r - coordinate.row) == 0 && abs(c - coordinate.col) == 1) ||
+                (abs(r - coordinate.row) == 1 && abs(c - coordinate.col) == 0) ||
+                (abs(r - coordinate.row) == 1 && abs(c - coordinate.col) == 1))
             {
-                fields[r][c].used = true;
+                fields[r][c].neighbour = true;
                 len++;
             }
         }
@@ -85,17 +96,39 @@ uint8_t getNeighbours(Fields field, Fields fields[NUM_OF_ROWS][NUM_OF_COLS])
     return len;
 }
 
-
-void readRecursive(Fields field, Fields fields[NUM_OF_ROWS][NUM_OF_COLS], uint8_t terminator, char rijec[])
+bool isCoordinateUsed(Coordinate coordinate, Coordinate coordinates[], uint8_t len)
 {
-    // printf("value %02x\n", field.id);
-    getNeighbours(field, fields);
-    // drawFields(fields);
+    for (uint8_t i = 0; i < len; i++)
+    {
+        if (memcmp(&coordinate, &coordinates[i], sizeof(Coordinate)) == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+uint32_t total = 0;
+
+void readRecursive(Coordinate coordinate, Fields fields[NUM_OF_ROWS][NUM_OF_COLS], uint8_t terminator, Coordinate usedCoordinates[])
+{
     // printf("---------------------------\n");
+    total++;
+    // printf("value %d.%d\n", coordinate.row, coordinate.col);
+    setNeighboursIntoFields(coordinate, fields);
+    // drawFields(fields);
+
+    memcpy(&usedCoordinates[terminator], &coordinate, sizeof(Coordinate));
 
     if (terminator >= TERMINATOR)
     {
-        printf("%s\n", rijec);
+        printf(FILE_NAME "END: ");
+        for (uint8_t i = 0; i <= TERMINATOR; i++)
+        {
+            // printf("%d.%d, ", usedCoordinates[i].row, usedCoordinates[i].col);
+            printf("%c", usedCoordinates[i].row, usedCoordinates[i].col);
+        }
+        printf("\n");
         return;
     }
 
@@ -103,12 +136,11 @@ void readRecursive(Fields field, Fields fields[NUM_OF_ROWS][NUM_OF_COLS], uint8_
     {
         for (uint8_t c = 0; c < NUM_OF_COLS; c++)
         {
-            if (fields[r][c].used)
+            if (fields[r][c].neighbour && !isCoordinateUsed(fields[r][c].coordinate, usedCoordinates, terminator + 1))
             {
-                rijec[terminator] = fields[r][c].value;
                 Fields fields[NUM_OF_ROWS][NUM_OF_COLS] = {0x00};
                 initFields(fields);
-                readRecursive(fields[r][c], fields, terminator + 1, rijec);
+                readRecursive(fields[r][c].coordinate, fields, terminator + 1, usedCoordinates);
             }
         }
     }
@@ -119,12 +151,17 @@ int main()
     printf(FILE_NAME "boot sequence start\n");
     Fields fields[NUM_OF_ROWS][NUM_OF_COLS] = {0x00};
     initFields(fields);
-    Fields field = {0, 1};
 
-    char rijec[TERMINATOR];
-
-    readRecursive(field, fields, 0, rijec);
-
+    for (uint8_t r = 0; r < NUM_OF_ROWS; r++)
+    {
+        for (uint8_t c = 0; c < NUM_OF_COLS; c++)
+        {
+            Coordinate coordinate = {r, c};
+            Coordinate usedCoordinates[TERMINATOR];
+            readRecursive(coordinate, fields, 0, usedCoordinates);
+            // printf(FILE_NAME "total = %d\n", total);
+        }
+    }
 
     printf(FILE_NAME "boot sequence end\n");
     return 0;
